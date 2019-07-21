@@ -1,0 +1,4 @@
+137c137
+<   #define IR_SEND_PWM_PIN 9
+---
+>   #define IR_SEND_PWM_PIN 0

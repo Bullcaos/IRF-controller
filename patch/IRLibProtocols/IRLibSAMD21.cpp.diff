@@ -1,0 +1,4 @@
+30c30
+<   uint8_t IR_PER_EorF;
+---
+>   short int IR_PER_EorF;
