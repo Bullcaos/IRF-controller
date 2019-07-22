@@ -20,12 +20,14 @@ WiFiUDP bcast;
 
 void setup() {
   Serial.begin(9600);
-  while(!Serial);
+  pinMode(LED_BUILTIN, OUTPUT);
+  //while(!Serial);
   Serial.println("<<<POWERUP INITIATED>>>");
   if(WiFi.status() == WL_NO_MODULE){
     Serial.println("No WiFi card found");
     while(true);
   }
+  digitalWrite(LED_BUILTIN, HIGH);
   WiFi.begin(ssid, passwd);
   delay(10000);
   if(WiFi.status() != WL_CONNECTED){
@@ -38,6 +40,7 @@ void setup() {
   server.begin();
   conected = false;
   bcast.begin(BCAST_PORT);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
@@ -115,6 +118,7 @@ void loop() {
       Serial.println(strcmp(bcast_name, dev));
       if(strcmp(bcast_name, dev) == 0){
         delay(1000);
+        Serial.println("Sending message");
         bcast.beginPacket(bcast.remoteIP(), BCAST_PORT);
         bcast.write(bcast_msg);
         bcast.endPacket();
