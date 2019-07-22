@@ -1,17 +1,22 @@
 #include <WiFiNINA.h>
 #include <IRLibAll.h>
+#include <WiFiUdp.h>
+#include "secrets.h"
 
 #define PORT 835
-#define MAX_WIFI 20
 #define MAX_MSG 6
+#define BCAST_PORT 836
+#define BCAST_SIZE 30
 
-char ssid[MAX_WIFI];
-char passwd[MAX_WIFI];
+char ssid[] = WIFI_NAME;
+char passwd[] = WIFI_PASS;
+char dev[] = DEVICE_NAME;
 
 bool conected;
 
 WiFiServer server(PORT);
 IRsend sender;
+WiFiUDP bcast;
 
 void setup() {
   Serial.begin(9600);
@@ -21,29 +26,25 @@ void setup() {
     Serial.println("No WiFi card found");
     while(true);
   }
-  while(WiFi.status() != WL_CONNECTED){
-    Serial.print("Enter SSID: ");
-    readSerial(ssid);
-    Serial.print("\n");
-    Serial.print("Enter password: ");
-    readSerial(passwd);
-    Serial.print("\n");
-    Serial.print("Connecting to ");
-    Serial.println(ssid);
-    WiFi.begin(ssid, passwd);
-    delay(10000);
+  WiFi.begin(ssid, passwd);
+  delay(10000);
+  if(WiFi.status() != WL_CONNECTED){
+    Serial.println("Can't connect to WiFi. Check name and password");
+    while(true);
   }
-  Serial.print("WiFi connected");
+  Serial.println("WiFi connected");
   Serial.print("Listening to ");
   Serial.println(WiFi.localIP());
   server.begin();
   conected = false;
+  bcast.begin(BCAST_PORT);
 }
 
 void loop() {
   WiFiClient client = server.available();
-  uint8_t vers = 0x00, op_code = 0x00, current;
+  uint8_t vers = 0x00, op_code = 0x00, current = 0x00;
   uint8_t message[MAX_MSG];
+  char bcast_msg[BCAST_SIZE];
   int index = 0, operation = 0;
   bool done = false, prev_done = false;
   uint32_t nec_code = 0x00000000;
@@ -84,7 +85,7 @@ void loop() {
             if(op_code == 0x31){
               char result[40];
               sprintf(result, "%x", (uint32_t)(message[0]<<24|message[1]<<16|message[2]<<8|message[3]));
-              Serial.println(result);c
+              Serial.println(result);
               sender.send(NEC, (uint32_t)(message[0]<<24|message[1]<<16|message[2]<<8|message[3]), 32);
               client.println("200&Seems legit");
             }
@@ -99,9 +100,30 @@ void loop() {
       }
     }
   }
+  bzero(bcast_msg, sizeof(bcast_msg));
+  int bcast_len = 0;
+  bcast_len = bcast.parsePacket();
+  if(bcast_len){
+    Serial.println("Broadcast received");
+    bcast.read(bcast_msg, BCAST_SIZE);
+    char bcast_name[14];
+    bzero(bcast_name, sizeof(bcast_name));
+    if(bcast_msg[0] == 0x31 && bcast_msg[2] == 0xFF){
+      Serial.println("Protocol accepted");
+      for(int i = 0; i < 14; i++) bcast_name[i] = (char)bcast_msg[i+4];
+      Serial.println(bcast_name);
+      Serial.println(strcmp(bcast_name, dev));
+      if(strcmp(bcast_name, dev) == 0){
+        delay(1000);
+        bcast.beginPacket(bcast.remoteIP(), BCAST_PORT);
+        bcast.write(bcast_msg);
+        bcast.endPacket();
+      }
+    }
+  }
 }
 
-void readSerial(char *result){
+/*void readSerial(char *result){
   char current;
   while(!Serial.available());
   for(int i = 0; i < MAX_WIFI && Serial.available(); i++){
@@ -112,4 +134,4 @@ void readSerial(char *result){
       break;
     }
   }
-}
+}*/
