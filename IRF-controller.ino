@@ -2,9 +2,10 @@
 #include <IRLibAll.h>
 #include <WiFiUdp.h>
 #include "secrets.h"
+#include <RCSwitch.h>
 
 #define PORT 835
-#define MAX_MSG 6
+#define MAX_MSG 26
 #define BCAST_PORT 836
 #define BCAST_SIZE 30
 
@@ -17,6 +18,7 @@ bool conected;
 WiFiServer server(PORT);
 IRsend sender;
 WiFiUDP bcast;
+RCSwitch rf = RCSwitch();
 
 void setup() {
   Serial.begin(9600);
@@ -40,6 +42,7 @@ void setup() {
   server.begin();
   conected = false;
   bcast.begin(BCAST_PORT);
+  rf.enableTransmit(4);
   digitalWrite(LED_BUILTIN, LOW);
 }
 
@@ -91,6 +94,21 @@ void loop() {
               Serial.println(result);
               sender.send(NEC, (uint32_t)(message[0]<<24|message[1]<<16|message[2]<<8|message[3]), 32);
               client.println("200&Seems legit");
+            } else {
+              if(op_code == 0x01){
+                char result[24];
+                memset(result, 0x00, sizeof(result));
+                for(int i = 0; i < 24; i++){
+                  result[i] = (char)message[i];
+                }
+                Serial.println(result);
+                rf.send(result);
+                delay(100);
+                rf.send(result);
+                delay(100);
+                rf.send(result);
+                client.println("200&Seems legit");
+              }
             }
           }
         }
