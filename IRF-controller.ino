@@ -103,10 +103,10 @@ void loop() {
                 }
                 Serial.println(result);
                 rf.send(result);
-                delay(100);
+                /*delay(100);
                 rf.send(result);
                 delay(100);
-                rf.send(result);
+                rf.send(result);*/
                 client.println("200&Seems legit");
               }
             }
